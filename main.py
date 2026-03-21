@@ -1,20 +1,90 @@
+from dataclasses import dataclass
 import flet as ft
+
+
+@dataclass
+class Message:
+    user_name: str
+    text: str
+    message_type: str  # "chat_message" | "login_message"
+
+
+@ft.control
+class ChatMessage(ft.Row):
+    def __init__(self, message: Message):
+        super().__init__()
+        self.vertical_alignment = ft.CrossAxisAlignment.START
+        self.controls = [
+            ft.CircleAvatar(
+                content=ft.Text(self._initials(message.user_name)),
+                color=ft.Colors.WHITE,
+                bgcolor=self._avatar_color(message.user_name),
+            ),
+            ft.Column(
+                tight=True,
+                spacing=5,
+                controls=[
+                    ft.Text(message.user_name, weight=ft.FontWeight.BOLD),
+                    ft.Text(message.text, selectable=True),
+                ],
+            ),
+        ]
+
+    def _initials(self, name: str) -> str:
+        return name[:1].capitalize() if name else "?"
+
+    def _avatar_color(self, name: str) -> str:
+        colors = [
+            ft.Colors.AMBER, ft.Colors.BLUE, ft.Colors.BROWN, ft.Colors.CYAN,
+            ft.Colors.GREEN, ft.Colors.INDIGO, ft.Colors.LIME, ft.Colors.ORANGE,
+            ft.Colors.PINK, ft.Colors.PURPLE, ft.Colors.RED, ft.Colors.TEAL,
+            ft.Colors.YELLOW,
+        ]
+        return colors[hash(name) % len(colors)]
 
 
 def main(page: ft.Page):
     page.title = "Flet Chat"
     page.horizontal_alignment = ft.CrossAxisAlignment.STRETCH
 
-    # Lista onde as mensagens vão aparecer
+    # Store the current user's name (one dict per session/page instance)
+    user = {"name": ""}
+
+    # Welcome dialog: asks the user for a name before joining
+    def join_chat(_):
+        if not join_user_name.value:
+            join_user_name.error_text = "Name cannot be blank!"
+            join_user_name.update()
+            return
+        user["name"] = join_user_name.value.strip()
+        welcome_dlg.open = False
+        page.update()
+
+    join_user_name = ft.TextField(
+        label="Enter your name to join the chat",
+        autofocus=True,
+        on_submit=join_chat,
+    )
+    welcome_dlg = ft.AlertDialog(
+        open=True,
+        modal=True,
+        title=ft.Text("Welcome to Flet Chat!"),
+        content=ft.Column([join_user_name], width=300, height=70, tight=True),
+        actions=[ft.Button("Join chat", on_click=join_chat)],
+        actions_alignment=ft.MainAxisAlignment.END,
+    )
+    page.overlay.append(welcome_dlg)
+
+    # Chat message list
     chat = ft.ListView(
         expand=True,
         spacing=10,
         auto_scroll=True,
     )
 
-    # Campo para escrever a mensagem
+    # Input field for new messages
     new_message = ft.TextField(
-        hint_text="Escreve uma mensagem...",
+        hint_text="Write a message...",
         autofocus=True,
         shift_enter=True,
         min_lines=1,
@@ -36,7 +106,7 @@ def main(page: ft.Page):
                 new_message,
                 ft.IconButton(
                     icon=ft.Icons.SEND_ROUNDED,
-                    tooltip="Enviar mensagem",
+                    tooltip="Send message",
                 ),
             ]
         ),
