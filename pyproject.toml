@@ -1,0 +1,8 @@
+[project]
+name = "tp2-chatroom"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "flet>=0.80.0",
+    "flet-video>=0.1.0",
+]
