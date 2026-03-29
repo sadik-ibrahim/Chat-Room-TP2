@@ -65,9 +65,9 @@ def main(page: ft.Page):
         page.update()
 
     def on_system_event(message: Message):
-        # Handles broadcast events not tied to a specific room (e.g. room_created)
         if message.message_type == "room_created":
-            page.update()  # will refresh room list in a later step
+            room_history[message.room] = []  # prepare history slot for the new room
+            page.update()  # sidebar will re-render in next step
 
     page.pubsub.subscribe(on_system_event)
 
@@ -99,6 +99,32 @@ def main(page: ft.Page):
             )
             new_message.value = ""
             await new_message.focus()
+
+    def create_room_click(_):
+        name = new_room_name.value.strip()
+        if not name:
+            new_room_name.error_text = "Room name cannot be blank!"
+            new_room_name.update()
+            return
+        if name in rooms:
+            new_room_name.error_text = "Room already exists!"
+            new_room_name.update()
+            return
+        rooms.append(name)
+        page.pubsub.send_all(
+            Message(user_name=page.session.store.get("user_name"), text="", message_type="room_created", room=name)
+        )
+        page.pop_dialog()
+        switch_room(name)
+
+    new_room_name = ft.TextField(label="Room name", autofocus=True, on_submit=create_room_click)
+    create_room_dlg = ft.AlertDialog(
+        modal=True,
+        title=ft.Text("Create a new room"),
+        content=ft.Column([new_room_name], width=300, height=70, tight=True),
+        actions=[ft.Button("Create", on_click=create_room_click)],
+        actions_alignment=ft.MainAxisAlignment.END,
+    )
 
     # Welcome dialog: asks the user for a name before joining
     def join_chat(_):
