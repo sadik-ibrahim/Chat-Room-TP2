@@ -51,7 +51,11 @@ def main(page: ft.Page):
     page.title = "Flet Chat"
     page.horizontal_alignment = ft.CrossAxisAlignment.STRETCH
 
+    current_room = "general"
+    room_history: dict[str, list[Message]] = {r: [] for r in rooms}
+
     def on_message(topic: str, message: Message):
+        room_history[current_room].append(message)
         if message.message_type == "chat_message":
             chat.controls.append(ChatMessage(message))
         elif message.message_type == "login_message":
@@ -67,15 +71,30 @@ def main(page: ft.Page):
 
     page.pubsub.subscribe(on_system_event)
 
+    def switch_room(new_room: str):
+        nonlocal current_room
+        page.pubsub.unsubscribe_topic(current_room)
+        current_room = new_room
+        chat.controls.clear()
+        for msg in room_history[new_room]:
+            if msg.message_type == "chat_message":
+                chat.controls.append(ChatMessage(msg))
+            elif msg.message_type == "login_message":
+                chat.controls.append(
+                    ft.Text(msg.text, italic=True, color=ft.Colors.BLACK_45, size=12)
+                )
+        page.pubsub.subscribe_topic(new_room, on_message)
+        page.update()
+
     async def send_message_click(e):
         if new_message.value != "":
             page.pubsub.send_all_on_topic(
-                "general",  # hardcoded for now; will use current_room in next step
+                current_room,
                 Message(
                     user_name=page.session.store.get("user_name"),
                     text=new_message.value,
                     message_type="chat_message",
-                    room="general",
+                    room=current_room,
                 ),
             )
             new_message.value = ""
