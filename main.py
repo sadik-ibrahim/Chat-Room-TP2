@@ -52,7 +52,7 @@ def main(page: ft.Page):
             chat.controls.append(ChatMessage(message))
         elif message.message_type == "login_message":
             chat.controls.append(
-                ft.Text(message.text, italic=True, color=ft.Colors.BLACK45, size=12)
+                ft.Text(message.text, italic=True, color=ft.Colors.BLACK_45, size=12)
             )
         page.update()
 
@@ -62,7 +62,7 @@ def main(page: ft.Page):
         if new_message.value != "":
             page.pubsub.send_all(
                 Message(
-                    user_name=page.session.get("user_name"),
+                    user_name=page.session.store.get("user_name"),
                     text=new_message.value,
                     message_type="chat_message",
                 )
@@ -77,8 +77,7 @@ def main(page: ft.Page):
             join_user_name.update()
             return
         name = join_user_name.value.strip()
-        page.session.set("user_name", name)
-        welcome_dlg.open = False
+        page.session.store.set("user_name", name)
         new_message.prefix = ft.Text(f"{name}: ")
         page.pubsub.send_all(
             Message(
@@ -87,6 +86,8 @@ def main(page: ft.Page):
                 message_type="login_message",
             )
         )
+        page.pop_dialog()
+        page.update()
 
     join_user_name = ft.TextField(
         label="Enter your name to join the chat",
@@ -94,14 +95,13 @@ def main(page: ft.Page):
         on_submit=join_chat,
     )
     welcome_dlg = ft.AlertDialog(
-        open=True,
         modal=True,
         title=ft.Text("Welcome to Flet Chat!"),
         content=ft.Column([join_user_name], width=300, height=70, tight=True),
         actions=[ft.Button("Join chat", on_click=join_chat)],
         actions_alignment=ft.MainAxisAlignment.END,
     )
-    page.overlay.append(welcome_dlg)
+    page.show_dialog(welcome_dlg)
 
     # Chat message list
     chat = ft.ListView(
