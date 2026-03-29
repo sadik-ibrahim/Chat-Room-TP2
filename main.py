@@ -47,8 +47,16 @@ def main(page: ft.Page):
     page.title = "Flet Chat"
     page.horizontal_alignment = ft.CrossAxisAlignment.STRETCH
 
-    # Store the current user's name (one dict per session/page instance)
-    user = {"name": ""}
+    def on_message(message: Message):
+        if message.message_type == "chat_message":
+            chat.controls.append(ChatMessage(message))
+        elif message.message_type == "login_message":
+            chat.controls.append(
+                ft.Text(message.text, italic=True, color=ft.Colors.BLACK45, size=12)
+            )
+        page.update()
+
+    page.pubsub.subscribe(on_message)
 
     # Welcome dialog: asks the user for a name before joining
     def join_chat(_):
@@ -56,7 +64,7 @@ def main(page: ft.Page):
             join_user_name.error_text = "Name cannot be blank!"
             join_user_name.update()
             return
-        user["name"] = join_user_name.value.strip()
+        page.session.set("user_name", join_user_name.value.strip())
         welcome_dlg.open = False
         page.update()
 
