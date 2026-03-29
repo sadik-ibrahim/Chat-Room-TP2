@@ -51,7 +51,7 @@ def main(page: ft.Page):
     page.title = "Flet Chat"
     page.horizontal_alignment = ft.CrossAxisAlignment.STRETCH
 
-    def on_message(message: Message):
+    def on_message(topic: str, message: Message):
         if message.message_type == "chat_message":
             chat.controls.append(ChatMessage(message))
         elif message.message_type == "login_message":
@@ -60,16 +60,23 @@ def main(page: ft.Page):
             )
         page.update()
 
-    page.pubsub.subscribe(on_message)
+    def on_system_event(message: Message):
+        # Handles broadcast events not tied to a specific room (e.g. room_created)
+        if message.message_type == "room_created":
+            page.update()  # will refresh room list in a later step
+
+    page.pubsub.subscribe(on_system_event)
 
     async def send_message_click(e):
         if new_message.value != "":
-            page.pubsub.send_all(
+            page.pubsub.send_all_on_topic(
+                "general",  # hardcoded for now; will use current_room in next step
                 Message(
                     user_name=page.session.store.get("user_name"),
                     text=new_message.value,
                     message_type="chat_message",
-                )
+                    room="general",
+                ),
             )
             new_message.value = ""
             await new_message.focus()
@@ -83,12 +90,15 @@ def main(page: ft.Page):
         name = join_user_name.value.strip()
         page.session.store.set("user_name", name)
         new_message.prefix = ft.Text(f"{name}: ")
-        page.pubsub.send_all(
+        page.pubsub.subscribe_topic("general", on_message)
+        page.pubsub.send_all_on_topic(
+            "general",
             Message(
                 user_name=name,
                 text=f"{name} has joined the chat.",
                 message_type="login_message",
-            )
+                room="general",
+            ),
         )
         page.pop_dialog()
         page.update()
