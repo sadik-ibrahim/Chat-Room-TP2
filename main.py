@@ -1,12 +1,16 @@
 from dataclasses import dataclass
 import flet as ft
 
+# Shared across all sessions in the same process
+rooms: list[str] = ["general", "random"]
+
 
 @dataclass
 class Message:
     user_name: str
     text: str
-    message_type: str  # "chat_message" | "login_message"
+    message_type: str  # "chat_message" | "login_message" | "room_created"
+    room: str = "general"
 
 
 @ft.control
