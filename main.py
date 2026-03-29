@@ -58,15 +58,35 @@ def main(page: ft.Page):
 
     page.pubsub.subscribe(on_message)
 
+    async def send_message_click(e):
+        if new_message.value != "":
+            page.pubsub.send_all(
+                Message(
+                    user_name=page.session.get("user_name"),
+                    text=new_message.value,
+                    message_type="chat_message",
+                )
+            )
+            new_message.value = ""
+            await new_message.focus()
+
     # Welcome dialog: asks the user for a name before joining
     def join_chat(_):
         if not join_user_name.value:
             join_user_name.error_text = "Name cannot be blank!"
             join_user_name.update()
             return
-        page.session.set("user_name", join_user_name.value.strip())
+        name = join_user_name.value.strip()
+        page.session.set("user_name", name)
         welcome_dlg.open = False
-        page.update()
+        new_message.prefix = ft.Text(f"{name}: ")
+        page.pubsub.send_all(
+            Message(
+                user_name=name,
+                text=f"{name} has joined the chat.",
+                message_type="login_message",
+            )
+        )
 
     join_user_name = ft.TextField(
         label="Enter your name to join the chat",
@@ -99,6 +119,7 @@ def main(page: ft.Page):
         max_lines=5,
         filled=True,
         expand=True,
+        on_submit=send_message_click,
     )
 
     page.add(
@@ -115,6 +136,7 @@ def main(page: ft.Page):
                 ft.IconButton(
                     icon=ft.Icons.SEND_ROUNDED,
                     tooltip="Send message",
+                    on_click=send_message_click,
                 ),
             ]
         ),
