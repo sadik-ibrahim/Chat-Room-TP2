@@ -19,6 +19,7 @@ def avatar_color(name: str) -> str:
 # Shared across all sessions in the same process
 rooms: list[str] = ["general", "random"]
 dm_history: dict[str, list] = {}  # dm_topic → list[Message], global so late subscribers see past msgs
+reactions: dict[str, dict[str, int]] = {}  # message_id → {emoji: count}
 
 
 def dm_topic(a: str, b: str) -> str:
@@ -30,11 +31,13 @@ def dm_topic(a: str, b: str) -> str:
 class Message:
     user_name: str
     text: str
-    message_type: str  # "chat_message"|"login_message"|"room_created"|"dm_invite"|"file_message"|"edit_message"|"delete_message"
+    message_type: str  # "chat_message"|"login_message"|"room_created"|"dm_invite"|"file_message"|"edit_message"|"delete_message"|"react_message"
     room: str = "general"
     recipient: str = ""  # used for dm_invite: the target username
     file_url: str = ""   # used for file_message: server path to the file
     file_name: str = ""  # used for file_message: original filename
+    target_id: str = ""  # used for react_message: id of the message being reacted to
+    emoji: str = ""      # used for react_message: the emoji character
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
 
 
