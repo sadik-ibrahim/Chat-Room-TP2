@@ -3,14 +3,21 @@ import flet as ft
 
 # Shared across all sessions in the same process
 rooms: list[str] = ["general", "random"]
+dm_history: dict[str, list] = {}  # dm_topic → list[Message], global so late subscribers see past msgs
+
+
+def dm_topic(a: str, b: str) -> str:
+    """Deterministic DM topic name regardless of who initiates."""
+    return "dm_" + "_".join(sorted([a, b]))
 
 
 @dataclass
 class Message:
     user_name: str
     text: str
-    message_type: str  # "chat_message" | "login_message" | "room_created"
+    message_type: str  # "chat_message" | "login_message" | "room_created" | "dm_invite"
     room: str = "general"
+    recipient: str = ""  # used for dm_invite: the target username
 
 
 @ft.control
