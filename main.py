@@ -76,6 +76,10 @@ def main(page: ft.Page):
             room_history[message.room] = []
             rooms_list.controls.append(room_button(message.room))
             rooms_list.update()
+        elif message.message_type == "dm_invite":
+            my_name = page.session.store.get("user_name")
+            if message.recipient == my_name:
+                open_dm(message.user_name)  # B opens the DM from A's side
 
     page.pubsub.subscribe(on_system_event)
 
@@ -93,6 +97,22 @@ def main(page: ft.Page):
                 )
         page.pubsub.subscribe_topic(new_room, on_message)
         page.update()
+
+    def open_dm(other_user: str):
+        """Open (or switch to) a DM conversation with other_user."""
+        topic = dm_topic(page.session.store.get("user_name"), other_user)
+        if topic not in dm_history:
+            dm_history[topic] = []
+            # add button to sidebar only the first time
+            dm_list.controls.append(
+                ft.TextButton(
+                    content=ft.Text(f"@ {other_user}", text_align=ft.TextAlign.LEFT),
+                    on_click=lambda e, t=topic: switch_room(t),
+                )
+            )
+            dm_list.update()
+        page.pubsub.subscribe_topic(topic, on_message)
+        switch_room(topic)
 
     async def send_message_click(e):
         if new_message.value != "":
