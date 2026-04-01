@@ -60,9 +60,13 @@ def main(page: ft.Page):
 
     current_room = "general"
     room_history: dict[str, list[Message]] = {r: [] for r in rooms}
+    dm_peers: dict[str, str] = {}  # DM topic → peer username (per session)
 
     def on_message(topic: str, message: Message):
-        room_history[current_room].append(message)
+        if topic.startswith("dm_"):
+            dm_history.setdefault(topic, []).append(message)
+        else:
+            room_history[current_room].append(message)
         if message.message_type == "chat_message":
             chat.controls.append(ChatMessage(message))
         elif message.message_type == "login_message":
@@ -79,7 +83,9 @@ def main(page: ft.Page):
         elif message.message_type == "dm_invite":
             my_name = page.session.store.get("user_name")
             if message.recipient == my_name:
-                open_dm(message.user_name)  # B opens the DM from A's side
+                topic = dm_topic(my_name, message.user_name)
+                if current_room != topic:  # don't re-open if already in this DM
+                    open_dm(message.user_name)
 
     page.pubsub.subscribe(on_system_event)
 
@@ -88,7 +94,8 @@ def main(page: ft.Page):
         page.pubsub.unsubscribe_topic(current_room)
         current_room = new_room
         chat.controls.clear()
-        for msg in room_history[new_room]:
+        history = dm_history.get(new_room, []) if new_room.startswith("dm_") else room_history.get(new_room, [])
+        for msg in history:
             if msg.message_type == "chat_message":
                 chat.controls.append(ChatMessage(msg))
             elif msg.message_type == "login_message":
@@ -101,6 +108,7 @@ def main(page: ft.Page):
     def open_dm(other_user: str):
         """Open (or switch to) a DM conversation with other_user."""
         topic = dm_topic(page.session.store.get("user_name"), other_user)
+        dm_peers[topic] = other_user
         if topic not in dm_history:
             dm_history[topic] = []
             # add button to sidebar only the first time
@@ -116,15 +124,22 @@ def main(page: ft.Page):
 
     async def send_message_click(e):
         if new_message.value != "":
+            my_name = page.session.store.get("user_name")
             page.pubsub.send_all_on_topic(
                 current_room,
                 Message(
-                    user_name=page.session.store.get("user_name"),
+                    user_name=my_name,
                     text=new_message.value,
                     message_type="chat_message",
                     room=current_room,
                 ),
             )
+            if current_room.startswith("dm_"):
+                peer = dm_peers.get(current_room)
+                if peer:
+                    page.pubsub.send_all(
+                        Message(user_name=my_name, text="", message_type="dm_invite", recipient=peer)
+                    )
             new_message.value = ""
             await new_message.focus()
 
