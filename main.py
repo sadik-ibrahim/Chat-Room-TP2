@@ -158,6 +158,20 @@ def main(page: ft.Page):
             dm_list.update()
         switch_room(topic)  # switch_room already calls subscribe_topic
 
+    def build_reaction_buttons(msg_id: str) -> list:
+        my_name = page.session.store.get("user_name")
+        return [
+            ft.OutlinedButton(
+                content=ft.Text(f"{e} {c}"),
+                on_click=lambda _, em=e, mid=msg_id: page.pubsub.send_all_on_topic(
+                    current_room,
+                    Message(user_name=my_name, text="", message_type="react_message",
+                            room=current_room, target_id=mid, emoji=em),
+                ),
+            )
+            for e, c in reactions.get(msg_id, {}).items() if c > 0
+        ]
+
     def make_message_widget(msg: Message):
         my_name = page.session.store.get("user_name")
         is_mine = msg.user_name == my_name
