@@ -202,6 +202,8 @@ def main(page: ft.Page):
         tight=True,
     )
 
+    dm_list = ft.Column(spacing=0, tight=True)
+
     sidebar = ft.Container(
         content=ft.Column(
             controls=[
@@ -212,7 +214,11 @@ def main(page: ft.Page):
                     tooltip="New room",
                     on_click=lambda _: page.show_dialog(create_room_dlg),
                 ),
+                ft.Divider(height=1),
+                ft.Text("Direct Messages", weight=ft.FontWeight.BOLD, size=14),
+                dm_list,
             ],
+            scroll=ft.ScrollMode.AUTO,
         ),
         width=180,
         padding=10,
