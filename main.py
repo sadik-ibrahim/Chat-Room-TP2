@@ -30,7 +30,7 @@ def dm_topic(a: str, b: str) -> str:
 class Message:
     user_name: str
     text: str
-    message_type: str  # "chat_message" | "login_message" | "room_created" | "dm_invite" | "file_message"
+    message_type: str  # "chat_message"|"login_message"|"room_created"|"dm_invite"|"file_message"|"edit_message"|"delete_message"
     room: str = "general"
     recipient: str = ""  # used for dm_invite: the target username
     file_url: str = ""   # used for file_message: server path to the file
@@ -71,9 +71,23 @@ def main(page: ft.Page):
     room_history: dict[str, list[Message]] = {r: [] for r in rooms}
     dm_peers: dict[str, str] = {}  # DM topic → peer username (per session)
     dm_opened: set[str] = set()  # DM topics already shown in this session's sidebar
-    msg_widgets: dict[str, ft.Control] = {}  # message id → widget in chat
+    msg_widgets: dict = {}  # message id → (outer_widget, text_ctrl or None)
 
     def on_message(topic: str, message: Message):
+        if message.message_type == "edit_message":
+            if message.id in msg_widgets:
+                _, text_ctrl = msg_widgets[message.id]
+                if text_ctrl:
+                    text_ctrl.value = message.text
+                    text_ctrl.update()
+            return
+        if message.message_type == "delete_message":
+            if message.id in msg_widgets:
+                widget, _ = msg_widgets.pop(message.id)
+                if widget in chat.controls:
+                    chat.controls.remove(widget)
+            page.update()
+            return
         if topic.startswith("dm_"):
             dm_history.setdefault(topic, []).append(message)
         else:
@@ -107,6 +121,7 @@ def main(page: ft.Page):
         page.pubsub.unsubscribe_topic(current_room)
         current_room = new_room
         chat.controls.clear()
+        msg_widgets.clear()
         history = dm_history.get(new_room, []) if new_room.startswith("dm_") else room_history.get(new_room, [])
         for msg in history:
             if msg.message_type == "chat_message":
@@ -138,11 +153,65 @@ def main(page: ft.Page):
         switch_room(topic)  # switch_room already calls subscribe_topic
 
     def make_message_widget(msg: Message):
-        if msg.user_name == page.session.store.get("user_name"):
-            return ChatMessage(msg)
-        def on_long_press(_):
-            open_dm(msg.user_name)
-        return ft.Container(content=ChatMessage(msg), on_long_press=on_long_press)
+        my_name = page.session.store.get("user_name")
+        is_mine = msg.user_name == my_name
+
+        if not is_mine:
+            def on_long_press(_):
+                open_dm(msg.user_name)
+            container = ft.Container(content=ChatMessage(msg), on_long_press=on_long_press)
+            msg_widgets[msg.id] = (container, None)
+            return container
+
+        # Own message — build manually so we can wrap avatar in PopupMenuButton
+        text_ctrl = ft.Text(msg.text, selectable=True)
+
+        def edit_click(_):
+            edit_field = ft.TextField(value=text_ctrl.value, autofocus=True)
+            def confirm_edit(_):
+                page.pubsub.send_all_on_topic(
+                    current_room,
+                    Message(user_name=my_name, text=edit_field.value,
+                            message_type="edit_message", room=current_room, id=msg.id),
+                )
+                page.pop_dialog()
+            page.show_dialog(ft.AlertDialog(
+                modal=True,
+                title=ft.Text("Editar mensagem"),
+                content=ft.Column([edit_field], width=300, height=70, tight=True),
+                actions=[ft.Button("Guardar", on_click=confirm_edit)],
+                actions_alignment=ft.MainAxisAlignment.END,
+            ))
+
+        def delete_click(_):
+            page.pubsub.send_all_on_topic(
+                current_room,
+                Message(user_name=my_name, text="",
+                        message_type="delete_message", room=current_room, id=msg.id),
+            )
+
+        popup = ft.PopupMenuButton(
+            content=ft.Row(
+                vertical_alignment=ft.CrossAxisAlignment.START,
+                controls=[
+                    ft.CircleAvatar(
+                        content=ft.Text(my_name[:1].capitalize()),
+                        color=ft.Colors.WHITE,
+                        bgcolor=avatar_color(my_name),
+                    ),
+                    ft.Column(tight=True, spacing=5, controls=[
+                        ft.Text(my_name, weight=ft.FontWeight.BOLD),
+                        text_ctrl,
+                    ]),
+                ],
+            ),
+            items=[
+                ft.PopupMenuItem(content=ft.Text("Editar"), on_click=edit_click),
+                ft.PopupMenuItem(content=ft.Text("Eliminar"), on_click=delete_click),
+            ],
+        )
+        msg_widgets[msg.id] = (popup, text_ctrl)
+        return popup
 
     def make_file_widget(msg: Message) -> ft.Row:
         ext = msg.file_name.rsplit(".", 1)[-1].lower() if "." in msg.file_name else ""
