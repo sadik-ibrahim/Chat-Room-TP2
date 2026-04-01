@@ -66,8 +66,9 @@ def main(page: ft.Page):
 
     def on_system_event(message: Message):
         if message.message_type == "room_created":
-            room_history[message.room] = []  # prepare history slot for the new room
-            page.update()  # sidebar will re-render in next step
+            room_history[message.room] = []
+            rooms_list.controls.append(room_button(message.room))
+            rooms_list.update()
 
     page.pubsub.subscribe(on_system_event)
 
@@ -111,6 +112,7 @@ def main(page: ft.Page):
             new_room_name.update()
             return
         rooms.append(name)
+        room_history[name] = []  # ready before switch_room runs
         page.pubsub.send_all(
             Message(user_name=page.session.store.get("user_name"), text="", message_type="room_created", room=name)
         )
@@ -134,7 +136,9 @@ def main(page: ft.Page):
             return
         name = join_user_name.value.strip()
         page.session.store.set("user_name", name)
+        page.pop_dialog()
         new_message.prefix = ft.Text(f"{name}: ")
+        new_message.update()
         page.pubsub.subscribe_topic("general", on_message)
         page.pubsub.send_all_on_topic(
             "general",
@@ -145,8 +149,6 @@ def main(page: ft.Page):
                 room="general",
             ),
         )
-        page.pop_dialog()
-        page.update()
 
     join_user_name = ft.TextField(
         label="Enter your name to join the chat",
@@ -181,24 +183,64 @@ def main(page: ft.Page):
         on_submit=send_message_click,
     )
 
-    page.add(
-        ft.Container(
-            content=chat,
-            border=ft.Border.all(1, ft.Colors.OUTLINE),
-            border_radius=5,
-            padding=10,
-            expand=True,
-        ),
-        ft.Row(
+    def room_button(name: str) -> ft.TextButton:
+        return ft.TextButton(
+            content=ft.Text(f"# {name}", text_align=ft.TextAlign.LEFT),
+            on_click=lambda e, r=name: switch_room(r),
+        )
+
+    rooms_list = ft.Column(
+        controls=[room_button(r) for r in rooms],
+        spacing=0,
+        tight=True,
+    )
+
+    sidebar = ft.Container(
+        content=ft.Column(
             controls=[
-                new_message,
+                ft.Text("Rooms", weight=ft.FontWeight.BOLD, size=14),
+                rooms_list,
                 ft.IconButton(
-                    icon=ft.Icons.SEND_ROUNDED,
-                    tooltip="Send message",
-                    on_click=send_message_click,
+                    icon=ft.Icons.ADD,
+                    tooltip="New room",
+                    on_click=lambda _: page.show_dialog(create_room_dlg),
                 ),
-            ]
+            ],
         ),
+        width=180,
+        padding=10,
+    )
+
+    page.add(
+        ft.Row(
+            expand=True,
+            controls=[
+                sidebar,
+                ft.VerticalDivider(width=1),
+                ft.Column(
+                    expand=True,
+                    controls=[
+                        ft.Container(
+                            content=chat,
+                            border=ft.Border.all(1, ft.Colors.OUTLINE),
+                            border_radius=5,
+                            padding=10,
+                            expand=True,
+                        ),
+                        ft.Row(
+                            controls=[
+                                new_message,
+                                ft.IconButton(
+                                    icon=ft.Icons.SEND_ROUNDED,
+                                    tooltip="Send message",
+                                    on_click=send_message_click,
+                                ),
+                            ]
+                        ),
+                    ],
+                ),
+            ],
+        )
     )
 
 
