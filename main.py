@@ -61,6 +61,7 @@ def main(page: ft.Page):
     current_room = "general"
     room_history: dict[str, list[Message]] = {r: [] for r in rooms}
     dm_peers: dict[str, str] = {}  # DM topic → peer username (per session)
+    dm_opened: set[str] = set()  # DM topics already shown in this session's sidebar
 
     def on_message(topic: str, message: Message):
         if topic.startswith("dm_"):
@@ -68,7 +69,7 @@ def main(page: ft.Page):
         else:
             room_history[current_room].append(message)
         if message.message_type == "chat_message":
-            chat.controls.append(ChatMessage(message))
+            chat.controls.append(make_message_widget(message))
         elif message.message_type == "login_message":
             chat.controls.append(
                 ft.Text(message.text, italic=True, color=ft.Colors.BLACK_45, size=12)
@@ -97,7 +98,7 @@ def main(page: ft.Page):
         history = dm_history.get(new_room, []) if new_room.startswith("dm_") else room_history.get(new_room, [])
         for msg in history:
             if msg.message_type == "chat_message":
-                chat.controls.append(ChatMessage(msg))
+                chat.controls.append(make_message_widget(msg))
             elif msg.message_type == "login_message":
                 chat.controls.append(
                     ft.Text(msg.text, italic=True, color=ft.Colors.BLACK_45, size=12)
@@ -111,16 +112,23 @@ def main(page: ft.Page):
         dm_peers[topic] = other_user
         if topic not in dm_history:
             dm_history[topic] = []
-            # add button to sidebar only the first time
+        if topic not in dm_opened:
+            dm_opened.add(topic)
             dm_list.controls.append(
                 ft.TextButton(
                     content=ft.Text(f"@ {other_user}", text_align=ft.TextAlign.LEFT),
-                    on_click=lambda e, t=topic: switch_room(t),
+                    on_click=lambda _, t=topic: switch_room(t),
                 )
             )
             dm_list.update()
-        page.pubsub.subscribe_topic(topic, on_message)
-        switch_room(topic)
+        switch_room(topic)  # switch_room already calls subscribe_topic
+
+    def make_message_widget(msg: Message):
+        if msg.user_name == page.session.store.get("user_name"):
+            return ChatMessage(msg)
+        def on_long_press(_):
+            open_dm(msg.user_name)
+        return ft.Container(content=ChatMessage(msg), on_long_press=on_long_press)
 
     async def send_message_click(e):
         if new_message.value != "":
