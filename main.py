@@ -1,5 +1,6 @@
 import os
-from dataclasses import dataclass
+import uuid
+from dataclasses import dataclass, field
 import flet as ft
 
 os.environ.setdefault("FLET_SECRET_KEY", "chatroom-dev-key")
@@ -34,6 +35,7 @@ class Message:
     recipient: str = ""  # used for dm_invite: the target username
     file_url: str = ""   # used for file_message: server path to the file
     file_name: str = ""  # used for file_message: original filename
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
 
 
 @ft.control
