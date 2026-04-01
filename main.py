@@ -71,6 +71,7 @@ def main(page: ft.Page):
     room_history: dict[str, list[Message]] = {r: [] for r in rooms}
     dm_peers: dict[str, str] = {}  # DM topic → peer username (per session)
     dm_opened: set[str] = set()  # DM topics already shown in this session's sidebar
+    msg_widgets: dict[str, ft.Control] = {}  # message id → widget in chat
 
     def on_message(topic: str, message: Message):
         if topic.startswith("dm_"):
