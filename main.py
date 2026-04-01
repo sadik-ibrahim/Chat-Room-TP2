@@ -1,5 +1,8 @@
+import os
 from dataclasses import dataclass
 import flet as ft
+
+os.environ.setdefault("FLET_SECRET_KEY", "chatroom-dev-key")
 import flet_video as ftv
 
 
@@ -141,7 +144,7 @@ def main(page: ft.Page):
     def make_file_widget(msg: Message) -> ft.Row:
         ext = msg.file_name.rsplit(".", 1)[-1].lower() if "." in msg.file_name else ""
         if ext in {"jpg", "jpeg", "png", "gif", "webp"}:
-            media = ft.Image(src=msg.file_url, width=200, fit=ft.ImageFit.CONTAIN)
+            media = ft.Image(src=msg.file_url, width=200, fit="contain")
         elif ext in {"mp4", "mov", "avi", "webm", "mkv"}:
             media = ftv.Video(
                 playlist=[ftv.VideoMedia(msg.file_url)],
@@ -150,9 +153,11 @@ def main(page: ft.Page):
                 autoplay=False,
             )
         else:
+            async def open_url(_, u=msg.file_url):
+                await ft.UrlLauncher().launch_url(u)
             media = ft.TextButton(
                 content=ft.Text(f"[file] {msg.file_name}"),
-                on_click=lambda _, u=msg.file_url: page.launch_url(u),
+                on_click=open_url,
             )
         return ft.Row(
             vertical_alignment=ft.CrossAxisAlignment.START,
@@ -168,13 +173,6 @@ def main(page: ft.Page):
                 ]),
             ],
         )
-
-    def on_file_pick(e: ft.FilePickerResultEvent):
-        if not e.files:
-            return
-        for f in e.files:
-            upload_url = page.get_upload_url(f.name, 60)
-            file_picker.upload([ft.FilePickerUploadFile(f.name, upload_url=upload_url)])
 
     def on_upload_progress(e: ft.FilePickerUploadEvent):
         if e.progress == 1.0:
@@ -274,8 +272,16 @@ def main(page: ft.Page):
     )
     page.show_dialog(welcome_dlg)
 
-    file_picker = ft.FilePicker(on_result=on_file_pick, on_upload=on_upload_progress)
-    page.overlay.append(file_picker)
+    file_picker = ft.FilePicker()
+    file_picker.on_upload = on_upload_progress
+
+    async def open_file_picker(_):
+        files = await file_picker.pick_files(allow_multiple=False)
+        if not files:
+            return
+        for f in files:
+            upload_url = page.get_upload_url(f.name, 60)
+            await file_picker.upload([ft.FilePickerUploadFile(name=f.name, upload_url=upload_url)])
 
     # Chat message list
     chat = ft.ListView(
@@ -351,7 +357,7 @@ def main(page: ft.Page):
                                 ft.IconButton(
                                     icon=ft.Icons.ATTACH_FILE,
                                     tooltip="Attach file",
-                                    on_click=lambda _: file_picker.pick_files(allow_multiple=False),
+                                    on_click=open_file_picker,
                                 ),
                                 new_message,
                                 ft.IconButton(
@@ -368,4 +374,4 @@ def main(page: ft.Page):
     )
 
 
-ft.run(main)
+ft.run(main, assets_dir="assets", upload_dir="assets/uploads")
