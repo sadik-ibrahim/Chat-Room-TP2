@@ -7,6 +7,9 @@ os.environ.setdefault("FLET_SECRET_KEY", "chatroom-dev-key")
 import flet_video as ftv
 
 
+EMOJI_OPTIONS = ["👍", "❤️", "😂", "😮", "😢", "🎉"]
+
+
 def avatar_color(name: str) -> str:
     colors = [
         ft.Colors.AMBER, ft.Colors.BLUE, ft.Colors.BROWN, ft.Colors.CYAN,
