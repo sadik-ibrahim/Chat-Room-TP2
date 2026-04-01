@@ -1,5 +1,16 @@
 from dataclasses import dataclass
 import flet as ft
+import flet_video as ftv
+
+
+def avatar_color(name: str) -> str:
+    colors = [
+        ft.Colors.AMBER, ft.Colors.BLUE, ft.Colors.BROWN, ft.Colors.CYAN,
+        ft.Colors.GREEN, ft.Colors.INDIGO, ft.Colors.LIME, ft.Colors.ORANGE,
+        ft.Colors.PINK, ft.Colors.PURPLE, ft.Colors.RED, ft.Colors.TEAL,
+        ft.Colors.YELLOW,
+    ]
+    return colors[hash(name) % len(colors)]
 
 # Shared across all sessions in the same process
 rooms: list[str] = ["general", "random"]
@@ -31,7 +42,7 @@ class ChatMessage(ft.Row):
             ft.CircleAvatar(
                 content=ft.Text(self._initials(message.user_name)),
                 color=ft.Colors.WHITE,
-                bgcolor=self._avatar_color(message.user_name),
+                bgcolor=avatar_color(message.user_name),
             ),
             ft.Column(
                 tight=True,
@@ -45,15 +56,6 @@ class ChatMessage(ft.Row):
 
     def _initials(self, name: str) -> str:
         return name[:1].capitalize() if name else "?"
-
-    def _avatar_color(self, name: str) -> str:
-        colors = [
-            ft.Colors.AMBER, ft.Colors.BLUE, ft.Colors.BROWN, ft.Colors.CYAN,
-            ft.Colors.GREEN, ft.Colors.INDIGO, ft.Colors.LIME, ft.Colors.ORANGE,
-            ft.Colors.PINK, ft.Colors.PURPLE, ft.Colors.RED, ft.Colors.TEAL,
-            ft.Colors.YELLOW,
-        ]
-        return colors[hash(name) % len(colors)]
 
 
 def main(page: ft.Page):
@@ -76,6 +78,8 @@ def main(page: ft.Page):
             chat.controls.append(
                 ft.Text(message.text, italic=True, color=ft.Colors.BLACK_45, size=12)
             )
+        elif message.message_type == "file_message":
+            chat.controls.append(make_file_widget(message))
         page.update()
 
     def on_system_event(message: Message):
@@ -105,6 +109,8 @@ def main(page: ft.Page):
                 chat.controls.append(
                     ft.Text(msg.text, italic=True, color=ft.Colors.BLACK_45, size=12)
                 )
+            elif msg.message_type == "file_message":
+                chat.controls.append(make_file_widget(msg))
         page.pubsub.subscribe_topic(new_room, on_message)
         page.update()
 
@@ -131,6 +137,58 @@ def main(page: ft.Page):
         def on_long_press(_):
             open_dm(msg.user_name)
         return ft.Container(content=ChatMessage(msg), on_long_press=on_long_press)
+
+    def make_file_widget(msg: Message) -> ft.Row:
+        ext = msg.file_name.rsplit(".", 1)[-1].lower() if "." in msg.file_name else ""
+        if ext in {"jpg", "jpeg", "png", "gif", "webp"}:
+            media = ft.Image(src=msg.file_url, width=200, fit=ft.ImageFit.CONTAIN)
+        elif ext in {"mp4", "mov", "avi", "webm", "mkv"}:
+            media = ftv.Video(
+                playlist=[ftv.VideoMedia(msg.file_url)],
+                width=300, height=180,
+                show_controls=True,
+                autoplay=False,
+            )
+        else:
+            media = ft.TextButton(
+                content=ft.Text(f"[file] {msg.file_name}"),
+                on_click=lambda _, u=msg.file_url: page.launch_url(u),
+            )
+        return ft.Row(
+            vertical_alignment=ft.CrossAxisAlignment.START,
+            controls=[
+                ft.CircleAvatar(
+                    content=ft.Text(msg.user_name[:1].capitalize()),
+                    color=ft.Colors.WHITE,
+                    bgcolor=avatar_color(msg.user_name),
+                ),
+                ft.Column(tight=True, spacing=5, controls=[
+                    ft.Text(msg.user_name, weight=ft.FontWeight.BOLD),
+                    media,
+                ]),
+            ],
+        )
+
+    def on_file_pick(e: ft.FilePickerResultEvent):
+        if not e.files:
+            return
+        for f in e.files:
+            upload_url = page.get_upload_url(f.name, 60)
+            file_picker.upload([ft.FilePickerUploadFile(f.name, upload_url=upload_url)])
+
+    def on_upload_progress(e: ft.FilePickerUploadEvent):
+        if e.progress == 1.0:
+            page.pubsub.send_all_on_topic(
+                current_room,
+                Message(
+                    user_name=page.session.store.get("user_name"),
+                    text="",
+                    message_type="file_message",
+                    room=current_room,
+                    file_url=f"/uploads/{e.file_name}",
+                    file_name=e.file_name,
+                ),
+            )
 
     async def send_message_click(e):
         if new_message.value != "":
@@ -216,6 +274,9 @@ def main(page: ft.Page):
     )
     page.show_dialog(welcome_dlg)
 
+    file_picker = ft.FilePicker(on_result=on_file_pick, on_upload=on_upload_progress)
+    page.overlay.append(file_picker)
+
     # Chat message list
     chat = ft.ListView(
         expand=True,
@@ -287,6 +348,11 @@ def main(page: ft.Page):
                         ),
                         ft.Row(
                             controls=[
+                                ft.IconButton(
+                                    icon=ft.Icons.ATTACH_FILE,
+                                    tooltip="Attach file",
+                                    on_click=lambda _: file_picker.pick_files(allow_multiple=False),
+                                ),
                                 new_message,
                                 ft.IconButton(
                                     icon=ft.Icons.SEND_ROUNDED,
