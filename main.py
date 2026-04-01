@@ -15,9 +15,11 @@ def dm_topic(a: str, b: str) -> str:
 class Message:
     user_name: str
     text: str
-    message_type: str  # "chat_message" | "login_message" | "room_created" | "dm_invite"
+    message_type: str  # "chat_message" | "login_message" | "room_created" | "dm_invite" | "file_message"
     room: str = "general"
     recipient: str = ""  # used for dm_invite: the target username
+    file_url: str = ""   # used for file_message: server path to the file
+    file_name: str = ""  # used for file_message: original filename
 
 
 @ft.control
