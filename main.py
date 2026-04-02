@@ -524,39 +524,42 @@ def main(page: ft.Page):
     )
 
     page.add(
-        ft.Row(
+        ft.SafeArea(
             expand=True,
-            controls=[
-                sidebar,
-                ft.VerticalDivider(width=1),
-                ft.Column(
-                    expand=True,
-                    controls=[
-                        ft.Container(
-                            content=chat,
-                            border=ft.Border.all(1, ft.Colors.OUTLINE),
-                            border_radius=5,
-                            padding=10,
-                            expand=True,
-                        ),
-                        ft.Row(
-                            controls=[
-                                ft.IconButton(
-                                    icon=ft.Icons.ATTACH_FILE,
-                                    tooltip="Attach file",
-                                    on_click=open_file_picker,
-                                ),
-                                new_message,
-                                ft.IconButton(
-                                    icon=ft.Icons.SEND_ROUNDED,
-                                    tooltip="Send message",
-                                    on_click=send_message_click,
-                                ),
-                            ]
-                        ),
-                    ],
-                ),
-            ],
+            content=ft.Row(
+                expand=True,
+                controls=[
+                    sidebar,
+                    ft.VerticalDivider(width=1),
+                    ft.Column(
+                        expand=True,
+                        controls=[
+                            ft.Container(
+                                content=chat,
+                                border=ft.Border.all(1, ft.Colors.OUTLINE),
+                                border_radius=5,
+                                padding=10,
+                                expand=True,
+                            ),
+                            ft.Row(
+                                controls=[
+                                    ft.IconButton(
+                                        icon=ft.Icons.ATTACH_FILE,
+                                        tooltip="Attach file",
+                                        on_click=open_file_picker,
+                                    ),
+                                    new_message,
+                                    ft.IconButton(
+                                        icon=ft.Icons.SEND_ROUNDED,
+                                        tooltip="Send message",
+                                        on_click=send_message_click,
+                                    ),
+                                ]
+                            ),
+                        ],
+                    ),
+                ],
+            ),
         )
     )
 
