@@ -70,7 +70,7 @@ class ChatMessage(ft.Row):
                 spacing=5,
                 controls=[
                     ft.Text(message.user_name, weight=ft.FontWeight.BOLD),
-                    ft.Text(message.text, selectable=True),
+                    ft.Text(message.text, selectable=False),
                 ],
             ),
         ]
@@ -133,7 +133,7 @@ def main(page: ft.Page):
             chat.controls.append(make_message_widget(message))
         elif message.message_type == "login_message":
             chat.controls.append(
-                ft.Text(message.text, italic=True, color=ft.Colors.BLACK_45, size=12)
+                ft.Text(message.text, italic=True, color=ft.Colors.WHITE, size=12)
             )
         elif message.message_type == "file_message":
             chat.controls.append(make_file_widget(message))
@@ -175,7 +175,7 @@ def main(page: ft.Page):
                 chat.controls.append(make_message_widget(msg))
             elif msg.message_type == "login_message":
                 chat.controls.append(
-                    ft.Text(msg.text, italic=True, color=ft.Colors.BLACK_45, size=12)
+                    ft.Text(msg.text, italic=True, color=ft.Colors.WHITE, size=12)
                 )
             elif msg.message_type == "file_message":
                 chat.controls.append(make_file_widget(msg))
@@ -224,7 +224,7 @@ def main(page: ft.Page):
             async def open_yt(_, _id=vid_id):
                 await ft.UrlLauncher().launch_url(f"https://www.youtube.com/watch?v={_id}")
             youtube = [ft.Container(
-                content=ft.Image(src=f"https://img.youtube.com/vi/{vid_id}/hqdefault.jpg", width=300, height=170, fit="contain"),
+                content=ft.Image(src=f"https://img.youtube.com/vi/{vid_id}/hqdefault.jpg", width=220, height=124, fit="contain"),
                 on_click=open_yt,
             )]
         else:
@@ -254,7 +254,7 @@ def main(page: ft.Page):
             ))
 
         if is_mine:
-            text_ctrl = ft.Text(msg.text, selectable=True)
+            text_ctrl = ft.Text(msg.text, selectable=False)
 
             def edit_click(_):
                 edit_field = ft.TextField(value=text_ctrl.value, autofocus=True)
@@ -280,28 +280,31 @@ def main(page: ft.Page):
                             message_type="delete_message", room=current_room, id=msg.id),
                 )
 
-            popup = ft.PopupMenuButton(
-                content=ft.Row(
-                    vertical_alignment=ft.CrossAxisAlignment.START,
-                    controls=[
-                        ft.CircleAvatar(
-                            content=ft.Text(my_name[:1].capitalize()),
-                            color=ft.Colors.WHITE,
-                            bgcolor=avatar_color(my_name),
-                        ),
-                        ft.Column(tight=True, spacing=5, controls=[
-                            ft.Text(my_name, weight=ft.FontWeight.BOLD),
-                            text_ctrl,
-                        ]),
-                    ],
-                ),
-                items=[
-                    ft.PopupMenuItem(content=ft.Text("Editar"), on_click=edit_click),
-                    ft.PopupMenuItem(content=ft.Text("Eliminar"), on_click=delete_click),
-                    ft.PopupMenuItem(content=ft.Text("Reagir"), on_click=react_click),
+            def show_actions(_):
+                page.show_dialog(ft.AlertDialog(
+                    content=ft.Column([
+                        ft.TextButton("Editar", on_click=lambda _: (page.pop_dialog(), edit_click(None))),
+                        ft.TextButton("Eliminar", on_click=lambda _: (page.pop_dialog(), delete_click(None))),
+                        ft.TextButton("Reagir", on_click=lambda _: (page.pop_dialog(), react_click(None))),
+                    ], tight=True, spacing=0),
+                ))
+
+            content_row = ft.Row(
+                vertical_alignment=ft.CrossAxisAlignment.START,
+                controls=[
+                    ft.CircleAvatar(
+                        content=ft.Text(my_name[:1].capitalize()),
+                        color=ft.Colors.WHITE,
+                        bgcolor=avatar_color(my_name),
+                    ),
+                    ft.Column(tight=True, spacing=5, expand=True, controls=[
+                        ft.Text(my_name, weight=ft.FontWeight.BOLD),
+                        text_ctrl,
+                    ]),
                 ],
             )
-            outer = ft.Column(tight=True, spacing=2, controls=[popup, *youtube, reactions_row])
+            gesture = ft.GestureDetector(content=content_row, on_long_press_start=show_actions)
+            outer = ft.Column(tight=True, spacing=2, controls=[gesture, *youtube, reactions_row])
             msg_widgets[msg.id] = (outer, text_ctrl, reactions_row)
             return outer
 
@@ -309,21 +312,40 @@ def main(page: ft.Page):
         def dm_click(_):
             open_dm(msg.user_name)
 
-        popup = ft.PopupMenuButton(
-            content=ChatMessage(msg),
-            items=[
-                ft.PopupMenuItem(content=ft.Text("Reagir"), on_click=react_click),
-                ft.PopupMenuItem(content=ft.Text("Mensagem privada"), on_click=dm_click),
+        def show_actions(_):
+            page.show_dialog(ft.AlertDialog(
+                content=ft.Column([
+                    ft.TextButton("Reagir", on_click=lambda _: (page.pop_dialog(), react_click(None))),
+                    ft.TextButton("Mensagem privada", on_click=lambda _: (page.pop_dialog(), dm_click(None))),
+                ], tight=True, spacing=0),
+            ))
+
+        content_row = ft.Row(
+            vertical_alignment=ft.CrossAxisAlignment.START,
+            controls=[
+                ft.CircleAvatar(
+                    content=ft.Text(msg.user_name[:1].capitalize()),
+                    color=ft.Colors.WHITE,
+                    bgcolor=avatar_color(msg.user_name),
+                ),
+                ft.Column(tight=True, spacing=5, expand=True, controls=[
+                    ft.Text(msg.user_name, weight=ft.FontWeight.BOLD),
+                    ft.Text(msg.text, selectable=False),
+                ]),
             ],
         )
-        outer = ft.Column(tight=True, spacing=2, controls=[popup, *youtube, reactions_row])
+        gesture = ft.GestureDetector(content=content_row, on_long_press_start=show_actions)
+        outer = ft.Column(tight=True, spacing=2, controls=[gesture, *youtube, reactions_row])
         msg_widgets[msg.id] = (outer, None, reactions_row)
         return outer
 
-    def make_file_widget(msg: Message) -> ft.Row:
+    def make_file_widget(msg: Message):
+        my_name = page.session.store.get("user_name")
+        is_mine = msg.user_name == my_name
+
         ext = msg.file_name.rsplit(".", 1)[-1].lower() if "." in msg.file_name else ""
         if ext in {"jpg", "jpeg", "png", "gif", "webp"}:
-            media = ft.Image(src=msg.file_url, width=200, fit="contain")
+            media = ft.Image(src=msg.file_url, width=160, fit="contain")
         elif ext in {"mp4", "mov", "avi", "webm", "mkv"}:
             media = ftv.Video(
                 playlist=[ftv.VideoMedia(msg.file_url)],
@@ -338,7 +360,8 @@ def main(page: ft.Page):
                 content=ft.Text(f"[file] {msg.file_name}"),
                 on_click=open_url,
             )
-        return ft.Row(
+
+        inner_row = ft.Row(
             vertical_alignment=ft.CrossAxisAlignment.START,
             controls=[
                 ft.CircleAvatar(
@@ -352,6 +375,47 @@ def main(page: ft.Page):
                 ]),
             ],
         )
+
+        reactions_row = ft.Row(spacing=4, wrap=True, controls=build_reaction_buttons(msg.id))
+
+        def react_click(_):
+            def on_emoji_click(_, em=None):
+                already_reacted = my_name in reactions.get(msg.id, {}).get(em, set())
+                page.pubsub.send_all_on_topic(
+                    current_room,
+                    Message(user_name=my_name,
+                            text="remove" if already_reacted else "",
+                            message_type="react_message",
+                            room=current_room, target_id=msg.id, emoji=em),
+                )
+                page.pop_dialog()
+            page.show_dialog(ft.AlertDialog(
+                title=ft.Text("Reagir"),
+                content=ft.Row(
+                    controls=[ft.TextButton(e, on_click=lambda _, em=e: on_emoji_click(_, em)) for e in EMOJI_OPTIONS],
+                    wrap=True,
+                ),
+                actions_alignment=ft.MainAxisAlignment.END,
+            ))
+
+        def delete_click(_):
+            page.pubsub.send_all_on_topic(
+                current_room,
+                Message(user_name=my_name, text="", message_type="delete_message", room=current_room, id=msg.id),
+            )
+
+        def show_actions(_):
+            action_items = [ft.TextButton("Reagir", on_click=lambda _: (page.pop_dialog(), react_click(None)))]
+            if is_mine:
+                action_items.append(ft.TextButton("Eliminar", on_click=lambda _: (page.pop_dialog(), delete_click(None))))
+            page.show_dialog(ft.AlertDialog(
+                content=ft.Column(action_items, tight=True, spacing=0),
+            ))
+
+        gesture = ft.GestureDetector(content=inner_row, on_long_press_start=show_actions)
+        outer = ft.Column(tight=True, spacing=2, controls=[gesture, reactions_row])
+        msg_widgets[msg.id] = (outer, None, reactions_row)
+        return outer
 
     def on_upload_progress(e: ft.FilePickerUploadEvent):
         if e.progress == 1.0:
@@ -525,9 +589,11 @@ def main(page: ft.Page):
                 dm_list,
             ],
             scroll=ft.ScrollMode.AUTO,
+            expand=True,
         ),
         width=120,
         padding=10,
+        alignment=ft.Alignment(-1, -1),
     )
 
     page.add(
