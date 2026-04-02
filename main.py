@@ -166,6 +166,7 @@ def main(page: ft.Page):
         if new_room in unread_badge:
             unread_badge[new_room].value = ""
             unread_badge[new_room].update()
+        current_room_label.value = f"@ {new_room[3:].replace('_', ' vs ')}" if new_room.startswith("dm_") else f"# {new_room}"
         chat.controls.clear()
         msg_widgets.clear()
         history = dm_history.get(new_room, []) if new_room.startswith("dm_") else room_history.get(new_room, [])
@@ -495,6 +496,14 @@ def main(page: ft.Page):
             on_click=lambda e, r=name: switch_room(r),
         )
 
+    current_room_label = ft.Text(f"# {current_room}", weight=ft.FontWeight.BOLD, expand=True)
+    sidebar_divider = ft.VerticalDivider(width=1)
+
+    def toggle_sidebar(_):
+        sidebar.visible = not sidebar.visible
+        sidebar_divider.visible = sidebar.visible
+        page.update()
+
     rooms_list = ft.Column(
         controls=[room_button(r) for r in rooms],
         spacing=0,
@@ -530,10 +539,16 @@ def main(page: ft.Page):
                 expand=True,
                 controls=[
                     sidebar,
-                    ft.VerticalDivider(width=1),
+                    sidebar_divider,
                     ft.Column(
                         expand=True,
                         controls=[
+                            ft.Row(
+                                controls=[
+                                    ft.IconButton(icon=ft.Icons.MENU, tooltip="Toggle sidebar", on_click=toggle_sidebar),
+                                    current_room_label,
+                                ],
+                            ),
                             ft.Container(
                                 content=chat,
                                 border=ft.Border.all(1, ft.Colors.OUTLINE),
