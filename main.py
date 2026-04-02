@@ -2,11 +2,10 @@ import os
 import shutil
 import uuid
 from dataclasses import dataclass, field
+from urllib.parse import urlparse
 import flet as ft
 
 os.environ.setdefault("FLET_SECRET_KEY", "chatroom-dev-key")
-import flet_video as ftv
-
 
 EMOJI_OPTIONS = ["👍", "❤️", "😂", "😮", "😢", "🎉"]
 
@@ -82,6 +81,10 @@ class ChatMessage(ft.Row):
 def main(page: ft.Page):
     page.title = "Flet Chat"
     page.horizontal_alignment = ft.CrossAxisAlignment.STRETCH
+
+    parsed = urlparse(page.url)
+    http_scheme = "https" if parsed.scheme in ("wss", "https") else "http"
+    server_base = f"{http_scheme}://{parsed.netloc}{parsed.path.rstrip('/')}"
 
     current_room = "general"
     room_history: dict[str, list[Message]] = {r: [] for r in rooms}
@@ -346,18 +349,12 @@ def main(page: ft.Page):
         ext = msg.file_name.rsplit(".", 1)[-1].lower() if "." in msg.file_name else ""
         if ext in {"jpg", "jpeg", "png", "gif", "webp"}:
             media = ft.Image(src=msg.file_url, width=160, fit="contain")
-        elif ext in {"mp4", "mov", "avi", "webm", "mkv"}:
-            media = ftv.Video(
-                playlist=[ftv.VideoMedia(msg.file_url)],
-                width=300, height=180,
-                show_controls=True,
-                autoplay=False,
-            )
         else:
-            async def open_url(_, u=msg.file_url):
+            icon = ft.Icons.PLAY_CIRCLE if ext in {"mp4", "mov", "avi", "webm", "mkv"} else ft.Icons.INSERT_DRIVE_FILE
+            async def open_url(_, u=server_base + msg.file_url):
                 await ft.UrlLauncher().launch_url(u)
             media = ft.TextButton(
-                content=ft.Text(f"[file] {msg.file_name}"),
+                content=ft.Row([ft.Icon(icon), ft.Text(msg.file_name)], tight=True),
                 on_click=open_url,
             )
 
