@@ -22,7 +22,7 @@ def avatar_color(name: str) -> str:
 # Shared across all sessions in the same process
 rooms: list[str] = ["general", "random"]
 dm_history: dict[str, list] = {}  # dm_topic → list[Message], global so late subscribers see past msgs
-reactions: dict[str, dict[str, int]] = {}  # message_id → {emoji: count}
+reactions: dict[str, dict[str, set]] = {}  # message_id → {emoji: set of usernames}
 
 
 def dm_topic(a: str, b: str) -> str:
@@ -82,17 +82,24 @@ def main(page: ft.Page):
     def on_message(topic: str, message: Message):
         if message.message_type == "edit_message":
             if message.id in msg_widgets:
-                _, text_ctrl = msg_widgets[message.id]
+                _, text_ctrl, _ = msg_widgets[message.id]
                 if text_ctrl:
                     text_ctrl.value = message.text
                     text_ctrl.update()
             return
         if message.message_type == "delete_message":
             if message.id in msg_widgets:
-                widget, _ = msg_widgets.pop(message.id)
+                widget, _, _ = msg_widgets.pop(message.id)
                 if widget in chat.controls:
                     chat.controls.remove(widget)
             page.update()
+            return
+        if message.message_type == "react_message":
+            reactions.setdefault(message.target_id, {}).setdefault(message.emoji, set()).add(message.user_name)
+            if message.target_id in msg_widgets:
+                _, _, r_row = msg_widgets[message.target_id]
+                r_row.controls = build_reaction_buttons(message.target_id)
+                r_row.update()
             return
         if topic.startswith("dm_"):
             dm_history.setdefault(topic, []).append(message)
@@ -176,62 +183,94 @@ def main(page: ft.Page):
         my_name = page.session.store.get("user_name")
         is_mine = msg.user_name == my_name
 
-        if not is_mine:
-            def on_long_press(_):
-                open_dm(msg.user_name)
-            container = ft.Container(content=ChatMessage(msg), on_long_press=on_long_press)
-            msg_widgets[msg.id] = (container, None)
-            return container
+        reactions_row = ft.Row(spacing=4, wrap=True)
 
-        # Own message — build manually so we can wrap avatar in PopupMenuButton
-        text_ctrl = ft.Text(msg.text, selectable=True)
-
-        def edit_click(_):
-            edit_field = ft.TextField(value=text_ctrl.value, autofocus=True)
-            def confirm_edit(_):
+        def react_click(_):
+            def on_emoji_click(_, em=None):
                 page.pubsub.send_all_on_topic(
                     current_room,
-                    Message(user_name=my_name, text=edit_field.value,
-                            message_type="edit_message", room=current_room, id=msg.id),
+                    Message(user_name=my_name, text="", message_type="react_message",
+                            room=current_room, target_id=msg.id, emoji=em),
                 )
                 page.pop_dialog()
             page.show_dialog(ft.AlertDialog(
-                modal=True,
-                title=ft.Text("Editar mensagem"),
-                content=ft.Column([edit_field], width=300, height=70, tight=True),
-                actions=[ft.Button("Guardar", on_click=confirm_edit)],
+                title=ft.Text("Reagir"),
+                content=ft.Row(
+                    controls=[
+                        ft.TextButton(e, on_click=lambda _, em=e: on_emoji_click(_, em))
+                        for e in EMOJI_OPTIONS
+                    ],
+                    wrap=True,
+                ),
                 actions_alignment=ft.MainAxisAlignment.END,
             ))
 
-        def delete_click(_):
-            page.pubsub.send_all_on_topic(
-                current_room,
-                Message(user_name=my_name, text="",
-                        message_type="delete_message", room=current_room, id=msg.id),
+        if is_mine:
+            text_ctrl = ft.Text(msg.text, selectable=True)
+
+            def edit_click(_):
+                edit_field = ft.TextField(value=text_ctrl.value, autofocus=True)
+                def confirm_edit(_):
+                    page.pubsub.send_all_on_topic(
+                        current_room,
+                        Message(user_name=my_name, text=edit_field.value,
+                                message_type="edit_message", room=current_room, id=msg.id),
+                    )
+                    page.pop_dialog()
+                page.show_dialog(ft.AlertDialog(
+                    modal=True,
+                    title=ft.Text("Editar mensagem"),
+                    content=ft.Column([edit_field], width=300, height=70, tight=True),
+                    actions=[ft.Button("Guardar", on_click=confirm_edit)],
+                    actions_alignment=ft.MainAxisAlignment.END,
+                ))
+
+            def delete_click(_):
+                page.pubsub.send_all_on_topic(
+                    current_room,
+                    Message(user_name=my_name, text="",
+                            message_type="delete_message", room=current_room, id=msg.id),
+                )
+
+            popup = ft.PopupMenuButton(
+                content=ft.Row(
+                    vertical_alignment=ft.CrossAxisAlignment.START,
+                    controls=[
+                        ft.CircleAvatar(
+                            content=ft.Text(my_name[:1].capitalize()),
+                            color=ft.Colors.WHITE,
+                            bgcolor=avatar_color(my_name),
+                        ),
+                        ft.Column(tight=True, spacing=5, controls=[
+                            ft.Text(my_name, weight=ft.FontWeight.BOLD),
+                            text_ctrl,
+                        ]),
+                    ],
+                ),
+                items=[
+                    ft.PopupMenuItem(content=ft.Text("Editar"), on_click=edit_click),
+                    ft.PopupMenuItem(content=ft.Text("Eliminar"), on_click=delete_click),
+                    ft.PopupMenuItem(content=ft.Text("Reagir"), on_click=react_click),
+                ],
             )
+            outer = ft.Column(tight=True, spacing=2, controls=[popup, reactions_row])
+            msg_widgets[msg.id] = (outer, text_ctrl, reactions_row)
+            return outer
+
+        # Other user's message
+        def dm_click(_):
+            open_dm(msg.user_name)
 
         popup = ft.PopupMenuButton(
-            content=ft.Row(
-                vertical_alignment=ft.CrossAxisAlignment.START,
-                controls=[
-                    ft.CircleAvatar(
-                        content=ft.Text(my_name[:1].capitalize()),
-                        color=ft.Colors.WHITE,
-                        bgcolor=avatar_color(my_name),
-                    ),
-                    ft.Column(tight=True, spacing=5, controls=[
-                        ft.Text(my_name, weight=ft.FontWeight.BOLD),
-                        text_ctrl,
-                    ]),
-                ],
-            ),
+            content=ChatMessage(msg),
             items=[
-                ft.PopupMenuItem(content=ft.Text("Editar"), on_click=edit_click),
-                ft.PopupMenuItem(content=ft.Text("Eliminar"), on_click=delete_click),
+                ft.PopupMenuItem(content=ft.Text("Reagir"), on_click=react_click),
+                ft.PopupMenuItem(content=ft.Text("Mensagem privada"), on_click=dm_click),
             ],
         )
-        msg_widgets[msg.id] = (popup, text_ctrl)
-        return popup
+        outer = ft.Column(tight=True, spacing=2, controls=[popup, reactions_row])
+        msg_widgets[msg.id] = (outer, None, reactions_row)
+        return outer
 
     def make_file_widget(msg: Message) -> ft.Row:
         ext = msg.file_name.rsplit(".", 1)[-1].lower() if "." in msg.file_name else ""
