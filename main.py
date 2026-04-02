@@ -95,7 +95,9 @@ def main(page: ft.Page):
             page.update()
             return
         if message.message_type == "react_message":
-            reactions.setdefault(message.target_id, {}).setdefault(message.emoji, set()).add(message.user_name)
+            msg_reactions = reactions.setdefault(message.target_id, {})
+            users = msg_reactions.setdefault(message.emoji, set())
+            users.add(message.user_name)
             if message.target_id in msg_widgets:
                 _, _, r_row = msg_widgets[message.target_id]
                 r_row.controls = build_reaction_buttons(message.target_id)
@@ -169,14 +171,14 @@ def main(page: ft.Page):
         my_name = page.session.store.get("user_name")
         return [
             ft.OutlinedButton(
-                content=ft.Text(f"{e} {c}"),
+                content=ft.Text(f"{e} {len(users)}"),
                 on_click=lambda _, em=e, mid=msg_id: page.pubsub.send_all_on_topic(
                     current_room,
                     Message(user_name=my_name, text="", message_type="react_message",
                             room=current_room, target_id=mid, emoji=em),
                 ),
             )
-            for e, c in reactions.get(msg_id, {}).items() if c > 0
+            for e, users in reactions.get(msg_id, {}).items() if users
         ]
 
     def make_message_widget(msg: Message):
