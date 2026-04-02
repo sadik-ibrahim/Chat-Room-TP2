@@ -97,7 +97,10 @@ def main(page: ft.Page):
         if message.message_type == "react_message":
             msg_reactions = reactions.setdefault(message.target_id, {})
             users = msg_reactions.setdefault(message.emoji, set())
-            users.add(message.user_name)
+            if message.text == "remove":
+                users.discard(message.user_name)
+            else:
+                users.add(message.user_name)
             if message.target_id in msg_widgets:
                 _, _, r_row = msg_widgets[message.target_id]
                 r_row.controls = build_reaction_buttons(message.target_id)
@@ -174,7 +177,9 @@ def main(page: ft.Page):
                 content=ft.Text(f"{e} {len(users)}"),
                 on_click=lambda _, em=e, mid=msg_id: page.pubsub.send_all_on_topic(
                     current_room,
-                    Message(user_name=my_name, text="", message_type="react_message",
+                    Message(user_name=my_name,
+                            text="remove" if my_name in reactions.get(mid, {}).get(em, set()) else "",
+                            message_type="react_message",
                             room=current_room, target_id=mid, emoji=em),
                 ),
             )
@@ -189,9 +194,12 @@ def main(page: ft.Page):
 
         def react_click(_):
             def on_emoji_click(_, em=None):
+                already_reacted = my_name in reactions.get(msg.id, {}).get(em, set())
                 page.pubsub.send_all_on_topic(
                     current_room,
-                    Message(user_name=my_name, text="", message_type="react_message",
+                    Message(user_name=my_name,
+                            text="remove" if already_reacted else "",
+                            message_type="react_message",
                             room=current_room, target_id=msg.id, emoji=em),
                 )
                 page.pop_dialog()
