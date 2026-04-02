@@ -1,4 +1,5 @@
 import os
+import shutil
 import uuid
 from dataclasses import dataclass, field
 import flet as ft
@@ -514,5 +515,11 @@ def main(page: ft.Page):
         )
     )
 
+
+# Clear uploads folder on startup
+_uploads_dir = os.path.join(os.path.dirname(__file__), "assets", "uploads")
+if os.path.exists(_uploads_dir):
+    shutil.rmtree(_uploads_dir)
+os.makedirs(_uploads_dir)
 
 ft.run(main, assets_dir="assets", upload_dir="assets/uploads")
