@@ -92,7 +92,7 @@ def main(page: ft.Page):
     dm_opened: set[str] = set()  # DM topics already shown in this session's sidebar
     msg_widgets: dict = {}  # message id → (outer_widget, text_ctrl or None, reactions_row)
     unread: dict[str, int] = {}          # room → unread count (per session)
-    unread_badge: dict[str, ft.Text] = {}  # room → badge Text control (per session)
+    unread_badge: dict[str, ft.Container] = {}  # room → badge Container (per session)
 
     def on_message(topic: str, message: Message):
         if message.message_type == "edit_message":
@@ -129,7 +129,8 @@ def main(page: ft.Page):
             if message.message_type in ("chat_message", "file_message"):
                 unread[topic] = unread.get(topic, 0) + 1
                 if topic in unread_badge:
-                    unread_badge[topic].value = str(unread[topic])
+                    unread_badge[topic].content.value = str(unread[topic])
+                    unread_badge[topic].visible = True
                     unread_badge[topic].update()
             return
         if message.message_type == "chat_message":
@@ -167,7 +168,7 @@ def main(page: ft.Page):
         # Clear unread badge for the room we're entering
         unread[new_room] = 0
         if new_room in unread_badge:
-            unread_badge[new_room].value = ""
+            unread_badge[new_room].visible = False
             unread_badge[new_room].update()
         current_room_label.value = f"@ {new_room[3:].replace('_', ' vs ')}" if new_room.startswith("dm_") else f"# {new_room}"
         chat.controls.clear()
@@ -226,9 +227,12 @@ def main(page: ft.Page):
         if vid_id:
             async def open_yt(_, _id=vid_id):
                 await ft.UrlLauncher().launch_url(f"https://www.youtube.com/watch?v={_id}")
-            youtube = [ft.Container(
-                content=ft.Image(src=f"https://img.youtube.com/vi/{vid_id}/hqdefault.jpg", width=220, height=124, fit="contain"),
-                on_click=open_yt,
+            youtube = [ft.Row(
+                controls=[ft.Container(
+                    content=ft.Image(src=f"https://img.youtube.com/vi/{vid_id}/hqdefault.jpg", width=280, height=158, fit="contain"),
+                    on_click=open_yt,
+                )],
+                alignment=ft.MainAxisAlignment.END if is_mine else ft.MainAxisAlignment.START,
             )]
         else:
             youtube = []
@@ -555,12 +559,20 @@ def main(page: ft.Page):
     )
 
     def room_button(name: str) -> ft.TextButton:
-        badge = ft.Text("", color=ft.Colors.RED, size=11, weight=ft.FontWeight.BOLD)
+        badge = ft.Container(
+            content=ft.Text("", color=ft.Colors.WHITE, size=9, weight=ft.FontWeight.BOLD),
+            bgcolor=ft.Colors.RED,
+            border_radius=9,
+            width=18,
+            height=18,
+            alignment=ft.Alignment(0, 0),
+            visible=False,
+        )
         unread_badge[name] = badge
         return ft.TextButton(
             content=ft.Row(
                 controls=[
-                    ft.Text(f"# {name}", text_align=ft.TextAlign.LEFT, expand=True),
+                    ft.Text(f"# {name}", text_align=ft.TextAlign.LEFT, expand=True, size=12),
                     badge,
                 ],
                 spacing=4,
