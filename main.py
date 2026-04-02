@@ -78,7 +78,9 @@ def main(page: ft.Page):
     room_history: dict[str, list[Message]] = {r: [] for r in rooms}
     dm_peers: dict[str, str] = {}  # DM topic → peer username (per session)
     dm_opened: set[str] = set()  # DM topics already shown in this session's sidebar
-    msg_widgets: dict = {}  # message id → (outer_widget, text_ctrl or None)
+    msg_widgets: dict = {}  # message id → (outer_widget, text_ctrl or None, reactions_row)
+    unread: dict[str, int] = {}          # room → unread count (per session)
+    unread_badge: dict[str, ft.Text] = {}  # room → badge Text control (per session)
 
     def on_message(topic: str, message: Message):
         if message.message_type == "edit_message":
@@ -110,7 +112,14 @@ def main(page: ft.Page):
         if topic.startswith("dm_"):
             dm_history.setdefault(topic, []).append(message)
         else:
-            room_history[current_room].append(message)
+            room_history.setdefault(topic, []).append(message)
+        if topic != current_room:
+            if message.message_type in ("chat_message", "file_message"):
+                unread[topic] = unread.get(topic, 0) + 1
+                if topic in unread_badge:
+                    unread_badge[topic].value = str(unread[topic])
+                    unread_badge[topic].update()
+            return
         if message.message_type == "chat_message":
             chat.controls.append(make_message_widget(message))
         elif message.message_type == "login_message":
@@ -126,6 +135,7 @@ def main(page: ft.Page):
             room_history[message.room] = []
             rooms_list.controls.append(room_button(message.room))
             rooms_list.update()
+            page.pubsub.subscribe_topic(message.room, on_message)
         elif message.message_type == "dm_invite":
             my_name = page.session.store.get("user_name")
             if message.recipient == my_name:
@@ -137,8 +147,16 @@ def main(page: ft.Page):
 
     def switch_room(new_room: str):
         nonlocal current_room
-        page.pubsub.unsubscribe_topic(current_room)
+        if current_room.startswith("dm_"):
+            page.pubsub.unsubscribe_topic(current_room)
         current_room = new_room
+        if new_room.startswith("dm_"):
+            page.pubsub.subscribe_topic(new_room, on_message)
+        # Clear unread badge for the room we're entering
+        unread[new_room] = 0
+        if new_room in unread_badge:
+            unread_badge[new_room].value = ""
+            unread_badge[new_room].update()
         chat.controls.clear()
         msg_widgets.clear()
         history = dm_history.get(new_room, []) if new_room.startswith("dm_") else room_history.get(new_room, [])
@@ -151,7 +169,6 @@ def main(page: ft.Page):
                 )
             elif msg.message_type == "file_message":
                 chat.controls.append(make_file_widget(msg))
-        page.pubsub.subscribe_topic(new_room, on_message)
         page.update()
 
     def open_dm(other_user: str):
@@ -389,7 +406,8 @@ def main(page: ft.Page):
         page.pop_dialog()
         new_message.prefix = ft.Text(f"{name}: ")
         new_message.update()
-        page.pubsub.subscribe_topic("general", on_message)
+        for r in rooms:
+            page.pubsub.subscribe_topic(r, on_message)
         page.pubsub.send_all_on_topic(
             "general",
             Message(
@@ -445,8 +463,16 @@ def main(page: ft.Page):
     )
 
     def room_button(name: str) -> ft.TextButton:
+        badge = ft.Text("", color=ft.Colors.RED, size=11, weight=ft.FontWeight.BOLD)
+        unread_badge[name] = badge
         return ft.TextButton(
-            content=ft.Text(f"# {name}", text_align=ft.TextAlign.LEFT),
+            content=ft.Row(
+                controls=[
+                    ft.Text(f"# {name}", text_align=ft.TextAlign.LEFT, expand=True),
+                    badge,
+                ],
+                spacing=4,
+            ),
             on_click=lambda e, r=name: switch_room(r),
         )
 
