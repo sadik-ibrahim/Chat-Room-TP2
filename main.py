@@ -31,6 +31,15 @@ def dm_topic(a: str, b: str) -> str:
     return "dm_" + "_".join(sorted([a, b]))
 
 
+def extract_youtube_id(text: str) -> str | None:
+    """Return YouTube video ID if text contains a YouTube URL, else None."""
+    if "v=" in text:
+        return text.split("v=")[1].split("&")[0]
+    if "youtu.be/" in text:
+        return text.split("youtu.be/")[1].split("?")[0]
+    return None
+
+
 @dataclass
 class Message:
     user_name: str
@@ -209,6 +218,16 @@ def main(page: ft.Page):
         is_mine = msg.user_name == my_name
 
         reactions_row = ft.Row(spacing=4, wrap=True, controls=build_reaction_buttons(msg.id))
+        vid_id = extract_youtube_id(msg.text)
+        if vid_id:
+            async def open_yt(_, _id=vid_id):
+                await ft.UrlLauncher().launch_url(f"https://www.youtube.com/watch?v={_id}")
+            youtube = [ft.Container(
+                content=ft.Image(src=f"https://img.youtube.com/vi/{vid_id}/hqdefault.jpg", width=300, height=170, fit="contain"),
+                on_click=open_yt,
+            )]
+        else:
+            youtube = []
 
         def react_click(_):
             def on_emoji_click(_, em=None):
@@ -281,7 +300,7 @@ def main(page: ft.Page):
                     ft.PopupMenuItem(content=ft.Text("Reagir"), on_click=react_click),
                 ],
             )
-            outer = ft.Column(tight=True, spacing=2, controls=[popup, reactions_row])
+            outer = ft.Column(tight=True, spacing=2, controls=[popup, *youtube, reactions_row])
             msg_widgets[msg.id] = (outer, text_ctrl, reactions_row)
             return outer
 
@@ -296,7 +315,7 @@ def main(page: ft.Page):
                 ft.PopupMenuItem(content=ft.Text("Mensagem privada"), on_click=dm_click),
             ],
         )
-        outer = ft.Column(tight=True, spacing=2, controls=[popup, reactions_row])
+        outer = ft.Column(tight=True, spacing=2, controls=[popup, *youtube, reactions_row])
         msg_widgets[msg.id] = (outer, None, reactions_row)
         return outer
 
