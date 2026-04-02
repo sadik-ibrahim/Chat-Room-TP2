@@ -679,11 +679,4 @@ if os.path.exists(_uploads_dir):
     shutil.rmtree(_uploads_dir)
 os.makedirs(_uploads_dir)
 
-ft.run(
-    main,
-    assets_dir="assets",
-    upload_dir="assets/uploads",
-    view=ft.AppView.WEB_BROWSER,
-    port=5000,
-    host="0.0.0.0",
-)
+ft.run(main, assets_dir="assets", upload_dir="assets/uploads")
