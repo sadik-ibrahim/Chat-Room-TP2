@@ -257,7 +257,7 @@ def main(page: ft.Page):
             ))
 
         if is_mine:
-            text_ctrl = ft.Text(msg.text, selectable=False)
+            text_ctrl = ft.Text(msg.text, selectable=False, color=ft.Colors.WHITE)
 
             def edit_click(_):
                 edit_field = ft.TextField(value=text_ctrl.value, autofocus=True)
@@ -292,20 +292,13 @@ def main(page: ft.Page):
                     ], tight=True, spacing=0),
                 ))
 
-            content_row = ft.Row(
-                vertical_alignment=ft.CrossAxisAlignment.START,
-                controls=[
-                    ft.CircleAvatar(
-                        content=ft.Text(my_name[:1].capitalize()),
-                        color=ft.Colors.WHITE,
-                        bgcolor=avatar_color(my_name),
-                    ),
-                    ft.Column(tight=True, spacing=5, expand=True, controls=[
-                        ft.Text(my_name, weight=ft.FontWeight.BOLD),
-                        text_ctrl,
-                    ]),
-                ],
+            bubble = ft.Container(
+                content=text_ctrl,
+                bgcolor=ft.Colors.INDIGO_400,
+                border_radius=15,
+                padding=ft.Padding.symmetric(horizontal=12, vertical=8),
             )
+            content_row = ft.Row(controls=[bubble], alignment=ft.MainAxisAlignment.END)
             gesture = ft.GestureDetector(content=content_row, on_long_press_start=show_actions)
             outer = ft.Column(tight=True, spacing=2, controls=[gesture, *youtube, reactions_row])
             msg_widgets[msg.id] = (outer, text_ctrl, reactions_row)
@@ -323,18 +316,24 @@ def main(page: ft.Page):
                 ], tight=True, spacing=0),
             ))
 
+        bubble = ft.Container(
+            content=ft.Column(tight=True, spacing=2, controls=[
+                ft.Text(msg.user_name, weight=ft.FontWeight.BOLD, size=12, color=ft.Colors.INDIGO_200),
+                ft.Text(msg.text, selectable=False),
+            ]),
+            bgcolor=ft.Colors.GREY_800,
+            border_radius=15,
+            padding=ft.Padding.symmetric(horizontal=12, vertical=8),
+        )
         content_row = ft.Row(
-            vertical_alignment=ft.CrossAxisAlignment.START,
+            vertical_alignment=ft.CrossAxisAlignment.END,
             controls=[
                 ft.CircleAvatar(
                     content=ft.Text(msg.user_name[:1].capitalize()),
                     color=ft.Colors.WHITE,
                     bgcolor=avatar_color(msg.user_name),
                 ),
-                ft.Column(tight=True, spacing=5, expand=True, controls=[
-                    ft.Text(msg.user_name, weight=ft.FontWeight.BOLD),
-                    ft.Text(msg.text, selectable=False),
-                ]),
+                bubble,
             ],
         )
         gesture = ft.GestureDetector(content=content_row, on_long_press_start=show_actions)
@@ -358,20 +357,31 @@ def main(page: ft.Page):
                 on_click=open_url,
             )
 
-        inner_row = ft.Row(
-            vertical_alignment=ft.CrossAxisAlignment.START,
-            controls=[
-                ft.CircleAvatar(
-                    content=ft.Text(msg.user_name[:1].capitalize()),
-                    color=ft.Colors.WHITE,
-                    bgcolor=avatar_color(msg.user_name),
-                ),
-                ft.Column(tight=True, spacing=5, controls=[
-                    ft.Text(msg.user_name, weight=ft.FontWeight.BOLD),
-                    media,
-                ]),
-            ],
-        )
+        if is_mine:
+            inner_row = ft.Row(
+                controls=[ft.Container(content=media, bgcolor=ft.Colors.INDIGO_400, border_radius=15, padding=ft.Padding.symmetric(horizontal=12, vertical=8))],
+                alignment=ft.MainAxisAlignment.END,
+            )
+        else:
+            inner_row = ft.Row(
+                vertical_alignment=ft.CrossAxisAlignment.END,
+                controls=[
+                    ft.CircleAvatar(
+                        content=ft.Text(msg.user_name[:1].capitalize()),
+                        color=ft.Colors.WHITE,
+                        bgcolor=avatar_color(msg.user_name),
+                    ),
+                    ft.Container(
+                        content=ft.Column(tight=True, spacing=2, controls=[
+                            ft.Text(msg.user_name, weight=ft.FontWeight.BOLD, size=12, color=ft.Colors.INDIGO_200),
+                            media,
+                        ]),
+                        bgcolor=ft.Colors.GREY_800,
+                        border_radius=15,
+                        padding=ft.Padding.symmetric(horizontal=12, vertical=8),
+                    ),
+                ],
+            )
 
         reactions_row = ft.Row(spacing=4, wrap=True, controls=build_reaction_buttons(msg.id))
 
