@@ -185,7 +185,7 @@ def main(page: ft.Page):
         my_name = page.session.store.get("user_name")
         is_mine = msg.user_name == my_name
 
-        reactions_row = ft.Row(spacing=4, wrap=True)
+        reactions_row = ft.Row(spacing=4, wrap=True, controls=build_reaction_buttons(msg.id))
 
         def react_click(_):
             def on_emoji_click(_, em=None):
