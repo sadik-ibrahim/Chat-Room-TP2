@@ -424,8 +424,6 @@ def main(page: ft.Page):
         name = join_user_name.value.strip()
         page.session.store.set("user_name", name)
         page.pop_dialog()
-        new_message.prefix = ft.Text(f"{name}: ")
-        new_message.update()
         for r in rooms:
             page.pubsub.subscribe_topic(r, on_message)
         page.pubsub.send_all_on_topic(
@@ -528,7 +526,7 @@ def main(page: ft.Page):
             ],
             scroll=ft.ScrollMode.AUTO,
         ),
-        width=180,
+        width=120,
         padding=10,
     )
 
