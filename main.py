@@ -548,6 +548,9 @@ def main(page: ft.Page):
         max_lines=5,
         filled=True,
         expand=True,
+        border_radius=25,
+        border=ft.InputBorder.NONE,
+        content_padding=ft.Padding(left=16, right=8, top=10, bottom=10),
         on_submit=send_message_click,
     )
 
@@ -627,20 +630,28 @@ def main(page: ft.Page):
                                 padding=10,
                                 expand=True,
                             ),
-                            ft.Row(
-                                controls=[
-                                    ft.IconButton(
-                                        icon=ft.Icons.ATTACH_FILE,
-                                        tooltip="Attach file",
-                                        on_click=open_file_picker,
-                                    ),
-                                    new_message,
-                                    ft.IconButton(
-                                        icon=ft.Icons.SEND_ROUNDED,
-                                        tooltip="Send message",
-                                        on_click=send_message_click,
-                                    ),
-                                ]
+                            ft.Container(
+                                content=ft.Row(
+                                    controls=[
+                                        ft.IconButton(
+                                            icon=ft.Icons.ATTACH_FILE,
+                                            tooltip="Attach file",
+                                            on_click=open_file_picker,
+                                        ),
+                                        new_message,
+                                        ft.IconButton(
+                                            icon=ft.Icons.SEND_ROUNDED,
+                                            icon_color=ft.Colors.INDIGO_400,
+                                            icon_size=28,
+                                            tooltip="Send message",
+                                            on_click=send_message_click,
+                                        ),
+                                    ],
+                                    vertical_alignment=ft.CrossAxisAlignment.END,
+                                ),
+                                padding=ft.Padding(left=4, right=4, top=6, bottom=6),
+                                bgcolor=ft.Colors.GREY_900,
+                                border_radius=30,
                             ),
                         ],
                     ),
