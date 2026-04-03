@@ -222,7 +222,7 @@ def main(page: ft.Page):
         my_name = page.session.store.get("user_name")
         is_mine = msg.user_name == my_name
 
-        reactions_row = ft.Row(spacing=4, wrap=True, controls=build_reaction_buttons(msg.id), alignment=ft.MainAxisAlignment.END if is_mine else ft.MainAxisAlignment.START)
+        reactions_row = ft.Row(spacing=4, wrap=True, expand=True, controls=build_reaction_buttons(msg.id), alignment=ft.MainAxisAlignment.END if is_mine else ft.MainAxisAlignment.START)
         vid_id = extract_youtube_id(msg.text)
         if vid_id:
             async def open_yt(_, _id=vid_id):
@@ -387,7 +387,7 @@ def main(page: ft.Page):
                 ],
             )
 
-        reactions_row = ft.Row(spacing=4, wrap=True, controls=build_reaction_buttons(msg.id), alignment=ft.MainAxisAlignment.END if is_mine else ft.MainAxisAlignment.START)
+        reactions_row = ft.Row(spacing=4, wrap=True, expand=True, controls=build_reaction_buttons(msg.id), alignment=ft.MainAxisAlignment.END if is_mine else ft.MainAxisAlignment.START)
 
         def react_click(_):
             def on_emoji_click(_, em=None):
