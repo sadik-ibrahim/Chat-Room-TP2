@@ -59,6 +59,17 @@ Esta funcionalidade melhora significativamente a usabilidade em contextos com m�
 
 ---
 
+## Instalação
+
+```bash
+# Instalar dependências (requer uv)
+uv sync
+```
+
+> Se não tiver o `uv` instalado: `pip install uv`
+
+---
+
 ## Como Correr
 
 | Plataforma | Comando |
