@@ -197,7 +197,8 @@ def main(page: ft.Page):
         my_name = page.session.store.get("user_name")
         is_mine = msg.user_name == my_name
 
-        reactions_row = ft.Row(spacing=4, wrap=True, expand=True, controls=build_reaction_buttons(msg.id), alignment=ft.MainAxisAlignment.END if is_mine else ft.MainAxisAlignment.START)
+        reactions_row = ft.Row(spacing=4, controls=build_reaction_buttons(msg.id))
+        reactions_container = ft.Row(controls=[ft.Container(expand=True), reactions_row] if is_mine else [reactions_row])
         vid_id = extract_youtube_id(msg.text)
         if vid_id:
             async def open_yt(_, _id=vid_id):
@@ -279,7 +280,7 @@ def main(page: ft.Page):
             )
             content_row = ft.Row(controls=[bubble], alignment=ft.MainAxisAlignment.END)
             gesture = ft.GestureDetector(content=content_row, on_long_press_start=show_actions)
-            outer = ft.Column(tight=True, spacing=2, controls=[gesture, *youtube, reactions_row])
+            outer = ft.Column(tight=True, spacing=2, controls=[gesture, *youtube, reactions_container])
             msg_widgets[msg.id] = (outer, text_ctrl, reactions_row)
             return outer
 
@@ -316,7 +317,7 @@ def main(page: ft.Page):
             ],
         )
         gesture = ft.GestureDetector(content=content_row, on_long_press_start=show_actions)
-        outer = ft.Column(tight=True, spacing=2, controls=[gesture, *youtube, reactions_row])
+        outer = ft.Column(tight=True, spacing=2, controls=[gesture, *youtube, reactions_container])
         msg_widgets[msg.id] = (outer, None, reactions_row)
         return outer
 
@@ -362,7 +363,8 @@ def main(page: ft.Page):
                 ],
             )
 
-        reactions_row = ft.Row(spacing=4, wrap=True, expand=True, controls=build_reaction_buttons(msg.id), alignment=ft.MainAxisAlignment.END if is_mine else ft.MainAxisAlignment.START)
+        reactions_row = ft.Row(spacing=4, controls=build_reaction_buttons(msg.id))
+        reactions_container = ft.Row(controls=[ft.Container(expand=True), reactions_row] if is_mine else [reactions_row])
 
         def react_click(_):
             def on_emoji_click(_, em=None):
@@ -399,7 +401,7 @@ def main(page: ft.Page):
             ))
 
         gesture = ft.GestureDetector(content=inner_row, on_long_press_start=show_actions)
-        outer = ft.Column(tight=True, spacing=2, controls=[gesture, reactions_row])
+        outer = ft.Column(tight=True, spacing=2, controls=[gesture, reactions_container])
         msg_widgets[msg.id] = (outer, None, reactions_row)
         return outer
 
