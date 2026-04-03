@@ -53,31 +53,6 @@ class Message:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
 
 
-@ft.control
-class ChatMessage(ft.Row):
-    def __init__(self, message: Message):
-        super().__init__()
-        self.vertical_alignment = ft.CrossAxisAlignment.START
-        self.controls = [
-            ft.CircleAvatar(
-                content=ft.Text(self._initials(message.user_name)),
-                color=ft.Colors.WHITE,
-                bgcolor=avatar_color(message.user_name),
-            ),
-            ft.Column(
-                tight=True,
-                spacing=5,
-                controls=[
-                    ft.Text(message.user_name, weight=ft.FontWeight.BOLD),
-                    ft.Text(message.text, selectable=False),
-                ],
-            ),
-        ]
-
-    def _initials(self, name: str) -> str:
-        return name[:1].capitalize() if name else "?"
-
-
 def main(page: ft.Page):
     page.title = "Flet Chat"
     page.horizontal_alignment = ft.CrossAxisAlignment.STRETCH
@@ -536,14 +511,8 @@ def main(page: ft.Page):
             upload_url = page.get_upload_url(f.name, 60)
             await file_picker.upload([ft.FilePickerUploadFile(name=f.name, upload_url=upload_url)])
 
-    # Chat message list
-    chat = ft.ListView(
-        expand=True,
-        spacing=10,
-        auto_scroll=True,
-    )
+    chat = ft.ListView(expand=True, spacing=10, auto_scroll=True)
 
-    # Input field for new messages
     new_message = ft.TextField(
         hint_text="Write a message...",
         autofocus=True,
