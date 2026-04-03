@@ -97,7 +97,9 @@ def main(page: ft.Page):
                 r_row.update()
             return
         if topic.startswith("dm_"):
-            dm_history.setdefault(topic, []).append(message)
+            history = dm_history.setdefault(topic, [])
+            if not any(m.id == message.id for m in history):
+                history.append(message)
         else:
             room_history.setdefault(topic, []).append(message)
         if topic != current_room:
