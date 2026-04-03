@@ -1,61 +1,11 @@
-# TP2 – Flet ChatRoom
+# Flet ChatRoom — TP2
 
-Aplicação de chat em tempo real desenvolvida em Python com a framework [Flet](https://flet.dev).
+Aplicação de chat em tempo real desenvolvida em Python com [Flet](https://flet.dev), a correr nativamente em desktop, web e mobile.
 Trabalho Prático 2 — Computação Móvel · UAlg LESTI 2025/26
 
----
-
-## Requisitos
-
-- Python 3.11+
-- [uv](https://docs.astral.sh/uv/) (gestor de pacotes)
-
-Dependências (instaladas automaticamente pelo uv):
-
-| Pacote | Versão |
-|---|---|
-| flet | 0.83.x |
-| flet-desktop | 0.83.x |
-
----
-
-## Instalação
-
-```bash
-# Clonar / extrair o projeto
-cd TP2_ChatRoom
-
-# Instalar dependências com uv
-uv sync
-```
-
----
-
-## Como Correr
-
-### Desktop (Windows / macOS / Linux)
-
-```bash
-uv run flet run main.py
-```
-
-### Browser — múltiplas sessões simultâneas
-
-```bash
-uv run flet run --web main.py
-```
-
-Abre dois tabs em `http://localhost:8550` para testar o chat entre utilizadores.
-
-### Android (app nativa Flet)
-
-```bash
-uv run flet run --android main.py
-```
-
-Instala a [app Flet](https://play.google.com/store/apps/details?id=com.appveyor.flet) no telemóvel, corre o comando acima no PC e lê o QR code apresentado no terminal.
-
-> **Nota:** o PC e o telemóvel têm de estar na mesma rede Wi-Fi.
+[![Live Demo](https://img.shields.io/badge/live%20demo-railway-blueviolet?style=flat-square)](https://chat-room-tp2-production.up.railway.app)
+[![Python](https://img.shields.io/badge/python-3.11-blue?style=flat-square)](https://python.org)
+[![Flet](https://img.shields.io/badge/flet-0.83.x-purple?style=flat-square)](https://flet.dev)
 
 ---
 
@@ -91,17 +41,50 @@ A implementação é feita com uma estrutura `dict[str, int]` por sessão que ma
 
 Esta funcionalidade melhora significativamente a usabilidade em contextos com múltiplas salas ativas em simultâneo, permitindo ao utilizador saber de imediato onde há atividade nova sem ter de navegar manualmente por todas as salas.
 
+### Objetivo 4 — Deploy e Personalização Visual
+- **Favicon personalizado** — ícone FC (indigo) no tab do browser
+- **Loading animation** — ícone personalizado no ecrã de carregamento
+- **Deploy** — aplicação publicada em [Railway](https://railway.app)
+
 ---
 
-## Estrutura do Projeto
+## Stack
+
+| | |
+|---|---|
+| Framework | [Flet](https://flet.dev) — Flutter UI from Python |
+| Language | Python 3.11 |
+| Package manager | [uv](https://github.com/astral-sh/uv) |
+| Deploy | [Railway](https://railway.app) |
+
+---
+
+## Como Correr
+
+| Plataforma | Comando |
+|---|---|
+| Desktop | `uv run flet run main.py` |
+| Web | `uv run flet run --web main.py` |
+| Android | `uv run flet run --android main.py` |
+
+> **Android:** instala a [app Flet](https://play.google.com/store/apps/details?id=com.appveyor.flet) no telemóvel, corre o comando no PC e lê o QR code. O PC e o telemóvel têm de estar na mesma rede Wi-Fi.
+
+---
+
+## Estrutura
 
 ```
 TP2_ChatRoom/
 ├── main.py           # Código fonte completo da aplicação
 ├── pyproject.toml    # Dependências (uv)
-├── uv.lock           # Lock file
+├── uv.lock
 ├── assets/
-│   └── uploads/      # Ficheiros enviados (limpos ao arrancar)
+│   ├── favicon.png              # Ícone no tab do browser
+│   ├── icon.png                 # Ícone da app
+│   ├── icons/
+│   │   ├── loading-animation.png  # Ecrã de carregamento
+│   │   └── Icon-192.png
+│   └── uploads/                 # Ficheiros enviados (limpos ao arrancar)
 └── README.md
 ```
 
@@ -113,6 +96,7 @@ TP2_ChatRoom/
 - O estado global (salas, histórico, reações) é partilhado entre sessões via variáveis de módulo e PubSub
 - A pasta `assets/uploads/` é limpa automaticamente ao iniciar o servidor
 - Ficheiros enviados são acessíveis via HTTP no URL do servidor Flet
+- Deploy em Railway com `host="0.0.0.0"` e porta dinâmica via `$PORT`
 
 ---
 
